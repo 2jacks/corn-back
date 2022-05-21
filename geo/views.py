@@ -1,18 +1,19 @@
-from .models import Farmer, Field, Research, AOI, Indexes
-from accounts.models import User
 import os
 import json
-from utils.geoprocessing import calc_stats
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
-from .serializers import FieldSerializer, ResearchSerializer, AOISerializer
+from utils.geoprocessing import calc_stats
+from django.conf import settings
 from django.http import Http404, FileResponse
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view
-from django.conf import settings
+from rest_framework import status, viewsets
+from rest_framework.decorators import api_view, action
+from django.shortcuts import get_object_or_404
+
+from .models import Farmer, Field, Research, AOI, Indexes
+from accounts.models import User
+from .serializers import FieldSerializer, ResearchSerializer, AOISerializer
 
 
 class FieldList(APIView):
@@ -81,12 +82,10 @@ class ResearchFiles(APIView):
             filepath = os.path.join(settings.MEDIA_ROOT, "{0}".format(research.rgb))
         if filefield == 'ndvi':
             filepath = os.path.join(settings.MEDIA_ROOT, "{0}".format(indexes.ndvi_png))
-        if filefield == 'ndwi':
+        if filefield == 'ndwi' and indexes.ndwi_png is not None:
             filepath = os.path.join(settings.MEDIA_ROOT, "{0}".format(indexes.ndwi_png))
 
         return FileResponse(open(filepath, 'rb'))
-
-
 
 
 class ResearchAOIs(APIView):
@@ -124,3 +123,33 @@ class ResearchAOIs(APIView):
         aoi = AOI.objects.get(id=request.data.aoiId)
         aoi.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AnalysisViewSet(viewsets.ModelViewSet):
+    def list(self, request):
+        queryset = Field.objects.all()
+        serializer = FieldSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        queryset = Field.objects.all()
+        field = get_object_or_404(queryset, pk=pk)
+        serializer = FieldSerializer(field)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def index_diff(self, request, pk=None):
+        data = request.data
+        first_date = data['firstDate']
+        second_date = data['secondDate']
+        target_index = data['targetIndex']
+
+        first_research = Research.objects.get(date=first_date)
+        second_research = Research.objects.get(date=second_date)
+
+        first_raster = os.path.join(settings.MEDIA_ROOT, Indexes.object.get(research_id=first_research.id)[target_index + '_tiff'])
+        second_raster = os.path.join(settings.MEDIA_ROOT, Indexes.object.get(research_id=second_research.id)[target_index + '_tiff'])
+
+        # diff_rasters(first_raster, second_raster)
+
+        return Response()

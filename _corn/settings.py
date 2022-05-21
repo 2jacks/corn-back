@@ -160,8 +160,8 @@ MEDIA_URL = 'media/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # GEOLIBRARIES
-GDAL_LIBRARY_PATH = 'C:\\OSGeo4W64\\bin\\gdal301.dll'
-GEOS_LIBRARY_PATH = 'C:\\OSGeo4W64\\bin\\geos_c.dll'
+GDAL_LIBRARY_PATH = 'C:\\Users\\anton\\anaconda3\\envs\\corn_env_2\\Library\\bin\\gdal304.dll'
+GEOS_LIBRARY_PATH = 'C:\\Users\\anton\\anaconda3\\envs\\corn_env_2\\Library\\bin\\geos_c.dll'
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'rest_framework_gis.schema.GeoFeatureAutoSchema',

@@ -57,8 +57,8 @@ class Indexes(models.Model):
     ndvi_tiff = models.FileField(upload_to=user_indexes_path)
     ndvi_png = models.FileField(upload_to=user_indexes_path)
 
-    ndwi_tiff = models.FileField(upload_to=user_indexes_path)
-    ndwi_png = models.FileField(upload_to=user_indexes_path)
+    ndwi_tiff = models.FileField(upload_to=user_indexes_path, blank=True)
+    ndwi_png = models.FileField(upload_to=user_indexes_path, blank=True)
 
 
 class FitoScan(models.Model):
