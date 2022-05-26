@@ -1,8 +1,10 @@
+import os.path
+
 from osgeo import gdal
 from django.contrib.gis.gdal import DataSource
 from django.conf import settings
-import subprocess
-import rasterio.rio.calc
+import uuid
+import rioxarray
 
 
 # OUTPUT: arr[min, max, mean, std_dev]
@@ -17,45 +19,34 @@ def calc_stats(aoi, raster):
     stats = warped.GetRasterBand(1).GetStatistics(0, 1)
     return stats
 
-# root = 'D:/bashInkom_GIS/web/app/_corn/media/'
-# def diff_rasters(first_path=None, second_path=None, test=False):
-#
-#     output = os.path.join(root, "tmp/diff.tif")
-#     subprocess.call(['rio calc', '(-(take a 1)(take b 1))', '--name' + " a=" + "{0}".format(first_path),
-#                      '--name' + " b=" + "{0}".format(second_path)], output)
-#     if test:
-#         print('AAAAAAAAAAAAAAAAAAA')
-#
-#         cutline = DataSource(os.path.join(root, '{0}'.format('test/field.geojson')))
-#
-#         a = os.path.join(root, '{0}'.format('test/NDVI_22-04-2022.tif'))
-#         b = os.path.join(root, '{0}'.format('test/NDVI_02-05-2022.tif'))
-#
-#         cropped_a = gdal.Warp(root + '\\test\\cropped_a.tif', a, cutlineDSName=cutline, dstNodata=None,
-#                               cropToCutline=True)
-#         cropped_b = gdal.Warp(root + '\\test\\cropped_b.tif', a, cutlineDSName=cutline, dstNodata=None,
-#                               cropToCutline=True)
-#
-#         a_end = os.path.join(root, '{0}'.format('test/cropped_a.tif'))
-#         b_end = os.path.join(root, '{0}'.format('test/cropped_b.tif'))
-#
-#         subprocess.check_output(['rio calc', '(-(read 1 1)(read 2 1))', a_end, b_end, output])
-#
-#
-# if __name__ == '__main__':
-#     print('AAAAAAAAAAAAAAAAAAA')
-#     output = os.path.join(root, "tmp/diff.tif")
-#     cutline = DataSource(os.path.join(root, '{0}'.format('test/field.geojson')))
-#
-#     a = os.path.join(root, '{0}'.format('test/NDVI_22-04-2022.tif'))
-#     b = os.path.join(root, '{0}'.format('test/NDVI_02-05-2022.tif'))
-#
-#     cropped_a = gdal.Warp(root + '\\test\\cropped_a.tif', a, cutlineDSName=cutline, dstNodata=None,
-#                           cropToCutline=True)
-#     cropped_b = gdal.Warp(root + '\\test\\cropped_b.tif', a, cutlineDSName=cutline, dstNodata=None,
-#                           cropToCutline=True)
-#
-#     a_end = os.path.join(root, '{0}'.format('test/cropped_a.tif'))
-#     b_end = os.path.join(root, '{0}'.format('test/cropped_b.tif'))
-#
-#     subprocess.check_output(['rio calc', '(-(read 1 1)(read 2 1))', a_end, b_end, output])
+
+def clip_and_subtract(r_1, r_2, mask):
+    geom = [mask]
+
+    ds_1 = rioxarray.open_rasterio(r_1, masked=True).squeeze()
+    ds_2 = rioxarray.open_rasterio(r_2, masked=True).squeeze()
+
+    print('--------------', geom, '\n', ds_1, '\n', ds_2)
+    print('======CRS=======', ds_1.rio.crs, ds_2.rio.crs)
+
+    ds_1_clipped = ds_1.rio.clip(geom, crs='4326')
+    ds_2_clipped = ds_2.rio.clip(geom, crs='4326')
+
+    # print('ds_1_clipped', ds_1_clipped)
+    # print('ds_2_clipped', ds_2_clipped)
+
+    dss_repr_match = ds_2_clipped.rio.reproject_match(ds_1_clipped)
+    # print('repr_match', dss_repr_match)
+    dss_repr_match = dss_repr_match.assign_coords({
+        "x": ds_1_clipped.x,
+        "y": ds_1_clipped.y,
+    })
+    res = ds_1_clipped - dss_repr_match
+
+    subtract_tif_path = os.path.join(settings.MEDIA_ROOT, 'tmp/' + str(uuid.uuid4()) + '.tif')
+    res.rio.to_raster(subtract_tif_path)
+    output_filename = os.path.join(settings.MEDIA_ROOT, 'tmp/' + str(uuid.uuid4()) + '.webp')
+    gdal.DEMProcessing(output_filename, subtract_tif_path, processing='color-relief', colorFilename='C:\\Users\\anton\\Desktop\\test_rasterio\\subtract_colormap.txt',
+                       computeEdges=True, addAlpha=True, format='WEBP',
+                       creationOptions=['QUALITY=100', 'LOSSLESS=True'])
+    return output_filename

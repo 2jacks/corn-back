@@ -1,9 +1,11 @@
 import os
 import json
 
-from utils.geoprocessing import calc_stats
+from django.views.decorators.csrf import csrf_exempt
+
+from utils.geoprocessing import calc_stats, clip_and_subtract
 from django.conf import settings
-from django.http import Http404, FileResponse
+from django.http import Http404, FileResponse, JsonResponse
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -137,19 +139,23 @@ class AnalysisViewSet(viewsets.ModelViewSet):
         serializer = FieldSerializer(field)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
+    @csrf_exempt
+    @action(detail=False, methods=['post'])
     def index_diff(self, request, pk=None):
         data = request.data
-        first_date = data['firstDate']
-        second_date = data['secondDate']
-        target_index = data['targetIndex']
+        first_res = data['firstRes']
+        second_res = data['secondRes']
+        mask = data['mask']
+        print(mask)
 
-        first_research = Research.objects.get(date=first_date)
-        second_research = Research.objects.get(date=second_date)
+        first_research = Research.objects.get(id=first_res)
+        second_research = Research.objects.get(id=second_res)
 
-        first_raster = os.path.join(settings.MEDIA_ROOT, Indexes.object.get(research_id=first_research.id)[target_index + '_tiff'])
-        second_raster = os.path.join(settings.MEDIA_ROOT, Indexes.object.get(research_id=second_research.id)[target_index + '_tiff'])
+        print('AAAAAAAA', Indexes.objects.get(research_id=first_research.id).ndvi_tiff)
 
-        # diff_rasters(first_raster, second_raster)
+        first_raster = os.path.join(settings.MEDIA_ROOT, str(Indexes.objects.get(research_id=first_research.id).ndvi_tiff))
+        second_raster = os.path.join(settings.MEDIA_ROOT,
+                                     str(Indexes.objects.get(research_id=second_research.id).ndvi_tiff))
+        filepath = clip_and_subtract(first_raster, second_raster, mask)
+        return FileResponse(open(filepath, 'rb'))
 
-        return Response()

@@ -225,6 +225,7 @@ SESSION_COOKIE_SECURE = False
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
+    "http://localhost:3000",
     "http://192.168.0.110",
     "http://192.168.0.109:3000",
 ]

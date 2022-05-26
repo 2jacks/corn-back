@@ -14,12 +14,12 @@ urlpatterns = [
          views.ResearchFiles.as_view()),
     path('<slug:username>/fields/<int:fieldId>/researches/<int:researchId>/aoi', views.ResearchAOIs.as_view()),
 
-    # path('analysis/index_diff', )
 
 ]
 
 router = DefaultRouter()
 router.register(r'analysis', AnalysisViewSet, basename='analysis')
+
 
 urlpatterns += router.urls
 # urlpatterns = format_suffix_patterns(urlpatterns, allowed=['json',])
