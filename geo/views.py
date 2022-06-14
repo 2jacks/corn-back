@@ -5,17 +5,17 @@ from django.views.decorators.csrf import csrf_exempt
 
 from utils.geoprocessing import calc_stats, clip_and_subtract
 from django.conf import settings
-from django.http import Http404, FileResponse, JsonResponse
+from django.http import Http404, FileResponse
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, action
+from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 
-from .models import Farmer, Field, Research, AOI, Indexes
+from .models import Farmer, Field, Research, AOI, Indexes, FitoScan as FitoScanModel
 from accounts.models import User
-from .serializers import FieldSerializer, ResearchSerializer, AOISerializer
+from .serializers import FieldSerializer, ResearchSerializer, AOISerializer, FitoScanSerializer
 
 
 class FieldList(APIView):
@@ -31,6 +31,11 @@ class FieldList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request, username, format=None):
+        field = self.get_object(request.data['fieldId'])
+        field.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class FieldDetail(APIView):
     def get_object(self, username, fieldId):
@@ -43,11 +48,6 @@ class FieldDetail(APIView):
         snippet = self.get_object(pk)
         serializer = FieldSerializer(snippet)
         return Response(serializer.data)
-
-    def delete(self, request, username, pk, format=None):
-        field = self.get_object(pk)
-        field.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ResearchList(APIView):
@@ -98,7 +98,7 @@ class ResearchAOIs(APIView):
 
     def post(self, request, username, fieldId, researchId):
         req = request.data
-        print(req)
+
         research = Research.objects.get(id=researchId)
         indexes = Indexes.objects.get(research_id=researchId)
         aoi = req['geom']['geometry']
@@ -122,22 +122,23 @@ class ResearchAOIs(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, username, fieldId, researchId):
-        aoi = AOI.objects.get(id=request.data.aoiId)
+        print(request.data)
+        aoi = AOI.objects.get(id=request.data['aoiId'])
         aoi.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AnalysisViewSet(viewsets.ModelViewSet):
-    def list(self, request):
-        queryset = Field.objects.all()
-        serializer = FieldSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def retrieve(self, request, pk=None):
-        queryset = Field.objects.all()
-        field = get_object_or_404(queryset, pk=pk)
-        serializer = FieldSerializer(field)
-        return Response(serializer.data)
+    # def list(self, request):
+    #     queryset = Field.objects.all()
+    #     serializer = FieldSerializer(queryset, many=True)
+    #     return Response(serializer.data)
+    #
+    # def retrieve(self, request, pk=None):
+    #     queryset = Field.objects.all()
+    #     field = get_object_or_404(queryset, pk=pk)
+    #     serializer = FieldSerializer(field)
+    #     return Response(serializer.data)
 
     @csrf_exempt
     @action(detail=False, methods=['post'])
@@ -146,12 +147,9 @@ class AnalysisViewSet(viewsets.ModelViewSet):
         first_res = data['firstRes']
         second_res = data['secondRes']
         mask = data['mask']
-        print(mask)
 
         first_research = Research.objects.get(id=first_res)
         second_research = Research.objects.get(id=second_res)
-
-        print('AAAAAAAA', Indexes.objects.get(research_id=first_research.id).ndvi_tiff)
 
         first_raster = os.path.join(settings.MEDIA_ROOT, str(Indexes.objects.get(research_id=first_research.id).ndvi_tiff))
         second_raster = os.path.join(settings.MEDIA_ROOT,
@@ -159,3 +157,9 @@ class AnalysisViewSet(viewsets.ModelViewSet):
         filepath = clip_and_subtract(first_raster, second_raster, mask)
         return FileResponse(open(filepath, 'rb'))
 
+
+class FitoScan(APIView):
+    def get(self, request, username, fieldId, researchId):
+        fitoscans = FitoScanModel.objects.filter(research_id=researchId)
+        serializer = FitoScanSerializer(fitoscans, many=True)
+        return Response(data=serializer.data)

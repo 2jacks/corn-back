@@ -13,13 +13,11 @@ urlpatterns = [
     path('<slug:username>/fields/<int:fieldId>/researches/<int:researchId>/files/<slug:filefield>',
          views.ResearchFiles.as_view()),
     path('<slug:username>/fields/<int:fieldId>/researches/<int:researchId>/aoi', views.ResearchAOIs.as_view()),
-
+    path('<slug:username>/fields/<int:fieldId>/researches/<int:researchId>/fitoscan', views.FitoScan.as_view()),
 
 ]
 
 router = DefaultRouter()
 router.register(r'analysis', AnalysisViewSet, basename='analysis')
 
-
 urlpatterns += router.urls
-# urlpatterns = format_suffix_patterns(urlpatterns, allowed=['json',])

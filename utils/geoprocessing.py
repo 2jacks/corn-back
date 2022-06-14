@@ -43,10 +43,16 @@ def clip_and_subtract(r_1, r_2, mask):
     })
     res = ds_1_clipped - dss_repr_match
 
+    pre_res = res.rio.clip(geom, crs='4326')
     subtract_tif_path = os.path.join(settings.MEDIA_ROOT, 'tmp/' + str(uuid.uuid4()) + '.tif')
-    res.rio.to_raster(subtract_tif_path)
-    output_filename = os.path.join(settings.MEDIA_ROOT, 'tmp/' + str(uuid.uuid4()) + '.webp')
-    gdal.DEMProcessing(output_filename, subtract_tif_path, processing='color-relief', colorFilename='C:\\Users\\anton\\Desktop\\test_rasterio\\subtract_colormap.txt',
-                       computeEdges=True, addAlpha=True, format='WEBP',
+    out = pre_res.rio.to_raster(subtract_tif_path)
+    output_filename = os.path.join(settings.MEDIA_ROOT, 'tmp/' + str(uuid.uuid4()) + '.tif')
+    gdal.DEMProcessing(output_filename, subtract_tif_path, processing='color-relief', colorFilename='D:\\bashInkom_GIS\\web\\app\\_corn\\utils\\subtract_colormap.txt',
+                       computeEdges=True, addAlpha=True, format='GTiff',
                        creationOptions=['QUALITY=100', 'LOSSLESS=True'])
-    return output_filename
+    output_end_filename = os.path.join(settings.MEDIA_ROOT, 'tmp/' + str(uuid.uuid4()) + '.png')
+
+    end = rioxarray.open_rasterio(output_filename, masked=True).squeeze()
+    end_clipped = end.rio.clip(geom, crs='4326')
+    end_end = end_clipped.rio.to_raster(output_end_filename)
+    return output_end_filename

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
-from .models import Farmer, Field, Research, AOI, Indexes
+from .models import Farmer, Field, Research, AOI, Indexes, FitoScan
 
 
 class FarmerSerializer(serializers.ModelSerializer):
@@ -37,4 +37,10 @@ class AOISerializer(GeoFeatureModelSerializer):
         geo_field = 'geom'
         fields = ('id', 'area', 'min_index', 'max_index', 'mean_index', 'research')
 
+
+class FitoScanSerializer(GeoFeatureModelSerializer):
+    class Meta:
+        model = FitoScan
+        geo_field = 'location'
+        fields = ('id', 'research_id', 'n', 'p', 'k', 's', 'ca', 'mg', 'b', 'cu', 'zn', 'mn', 'fe', 'mo', 'co', 'j')
 
